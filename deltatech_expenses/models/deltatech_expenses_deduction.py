@@ -190,8 +190,6 @@ class DeltatechExpensesDeduction(models.Model):
         for expenses in self:
             if expenses.move_id:
                 moves |= expenses.move_id
-            for voucher in expenses.voucher_ids:
-                moves |= voucher.move_id
 
         self.write({"state": "draft", "move_id": False})
         if moves:
@@ -202,22 +200,23 @@ class DeltatechExpensesDeduction(models.Model):
             # will be automatically deleted too
             for move in moves:
                 move.line_ids.remove_move_reconcile()
-            moves.unlink()
+            moves.with_context(force_delete=True).unlink()
 
         # anulare plati inregistrate
         for expenses in self:
-            expenses.voucher_ids.cancel_voucher()
-            expenses.voucher_ids.unlink()
+            expenses.voucher_ids.button_cancel()
 
             # expenses.payment_ids.cancel_voucher()
-            expenses.payment_ids.cancel()
+            # expenses.payment_ids.cancel()
             expenses.payment_ids.action_draft()
+            expenses.payment_ids.action_cancel()
             # domain = [('voucher_id', 'in', expenses.payment_ids.ids)]
             # statement_lines = self.env['account.bank.statement.line'].search(domain)
             # if statement_lines:
             #     statement_lines.unlink()
-            expenses.payment_ids.write({"move_name": False, "state": "draft"})
+            # expenses.payment_ids.write({"move_name": False, "state": "draft"})
             expenses.payment_ids.unlink()
+            expenses.voucher_ids.with_context(force_delete=True).unlink()
 
             # anulare postare chitante.
 
@@ -283,33 +282,35 @@ class DeltatechExpensesDeduction(models.Model):
             for line in expenses.expenses_line_ids:
                 partner_id = line.partner_id or generic_parnter
 
-                voucher_value = {
-                    "partner_id": partner_id.id,
-                    "move_type": "in_receipt",
-                    # "pay_now": "pay_now",
-                    "invoice_date": line.date,
-                    "date": line.date,
-                    "ref": line.name,
-                    "journal_id": purchase_journal.id,
-                    # "payment_journal_id": expenses.journal_payment_id.id,  # plata prin jurnalu de decont chelturili
-                    "expenses_deduction_id": expenses.id,
-                    # 'account_id': expenses.journal_payment_id.default_debit_account_id.id,  # 542
-                    # "account_id": partner_id.property_account_receivable_id.id,
-                    # aici trebuie sa fie contul din care se face plata furnizorului
-                    "invoice_line_ids": [
-                        (
-                            0,
-                            0,
-                            {
-                                "name": line.name,
-                                "price_unit": line.price_subtotal,
-                                "tax_ids": [(6, 0, line.tax_ids.ids)],
-                                "account_id": line.expense_account_id.id,
-                            },
-                        )
-                    ],
-                }
-                vouchers |= self.env["account.move"].create(voucher_value)
+                if line.type == "expenses":
+
+                    voucher_value = {
+                        "partner_id": partner_id.id,
+                        "move_type": "in_receipt",
+                        # "pay_now": "pay_now",
+                        "invoice_date": line.date,
+                        "date": line.date,
+                        "ref": line.name,
+                        "journal_id": purchase_journal.id,
+                        # "payment_journal_id": expenses.journal_payment_id.id,  # plata prin jurnalu de decont chelturili
+                        "expenses_deduction_id": expenses.id,
+                        # 'account_id': expenses.journal_payment_id.default_debit_account_id.id,  # 542
+                        # "account_id": partner_id.property_account_receivable_id.id,
+                        # aici trebuie sa fie contul din care se face plata furnizorului
+                        "invoice_line_ids": [
+                            (
+                                0,
+                                0,
+                                {
+                                    "name": line.name,
+                                    "price_unit": line.price_subtotal,
+                                    "tax_ids": [(6, 0, line.tax_ids.ids)],
+                                    "account_id": line.expense_account_id.id,
+                                },
+                            )
+                        ],
+                    }
+                    vouchers |= self.env["account.move"].create(voucher_value)
                 payment_methods = expenses.journal_id.outbound_payment_method_ids
 
                 payment_value = {
@@ -441,6 +442,8 @@ class DeltatechExpensesDeductionLine(models.Model):
     date = fields.Date("Date", index=True, copy=False, default=fields.Date.context_today)
     name = fields.Text(string="Reference", required=True)
     tax_ids = fields.Many2many("account.tax", string="Tax", help="Only for tax excluded from price")
+
+    type = fields.Selection([("expenses", "Expenses"), ("supplier_payment", "Supplier Payment")], default="expenses")
 
     amount = fields.Monetary(string="Total")  # e cu tot cu tva ?
     tax_amount = fields.Monetary(readonly=True, store=True, compute="_compute_subtotal")

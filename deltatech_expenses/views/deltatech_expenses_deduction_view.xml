@@ -55,12 +55,21 @@
                         <group>
                             <field name="employee_id" domain="[('is_company','=',False)]" />
                         </group>
+                        <group>
+                            <field name="journal_id" widget="selection" />
+                        </group>
                     </group>
-                    <group col="4">
-                        <field name="date_advance" />
-                        <field name="advance" />
-                        <field name="date_expense" />
-                        <field name="difference" widget="monetary" options="{'currency_field': 'currency_id'}" />
+                    <group>
+                        <group>
+                            <field name="date_advance" />
+                            <field name="date_expense" />
+                        </group>
+                        <group>
+                            <field name="advance" />
+                            <field name="difference" widget="monetary" options="{'currency_field': 'currency_id'}" />
+
+                        </group>
+
                     </group>
                     <group>
                         <group>
@@ -91,6 +100,7 @@
                                     <field
                                         name="partner_id"
                                         string="Supplier"
+                                        attrs="{'required': [('type','!=', 'expenses')]}"
                                         context="{'default_customer': 0, 'search_default_supplier': 1, 'default_supplier': 1}"
                                     />
                                     <field
@@ -98,6 +108,7 @@
                                         groups="account.group_account_user"
                                         optional="hide"
                                     />
+                                    <field name="type" />
                                     <field name="state" optional="hide" />
                                     <field name="currency_id" invisible="1" />
                                 </tree>
