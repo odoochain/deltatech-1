@@ -2,8 +2,7 @@
 #              Dorin Hongu <dhongu(@)gmail(.)com
 # See README.rst file on addons root folder for license details
 
-from odoo import _, api, fields, models
-from odoo.exceptions import UserError
+from odoo import api, fields, models
 from odoo.tools.safe_eval import safe_eval
 
 # TODO: de adaugat pretul si in wizardul ce permite modificarea stocului
@@ -18,11 +17,6 @@ class StockInventory(models.Model):
     )
     note = fields.Text(string="Note")
     filterbyrack = fields.Char("Rack")
-
-    def unlink(self):
-        if any(inventory.state not in ("draft", "cancel") for inventory in self):
-            raise UserError(_("You can only delete draft inventory."))
-        return super(StockInventory, self).unlink()
 
     def _get_inventory_lines_values(self):
         lines = super(StockInventory, self)._get_inventory_lines_values()
@@ -50,12 +44,12 @@ class StockInventory(models.Model):
         res = super(StockInventory, self).action_check()
         return res
 
-    def action_done(self):
-        super(StockInventory, self).action_done()
+    def _action_done(self):
+        super(StockInventory, self)._action_done()
         for inv in self:
             for move in inv.move_ids:
-                if move.date_expected != inv.date or move.date != inv.date:
-                    move.write({"date_expected": inv.date, "date": inv.date})
+                if move.date != inv.date:
+                    move.write({"date": inv.date})
         return True
 
     def action_remove_not_ok(self):
@@ -80,6 +74,14 @@ class StockInventoryLine(models.Model):
     loc_row = fields.Char("Row", size=16, related="product_id.loc_row", store=True)
     loc_case = fields.Char("Case", size=16, related="product_id.loc_case", store=True)
     is_ok = fields.Boolean("Is Ok", default=True)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for values in vals_list:
+            if "standard_price" not in values:
+                product = self.env["product.product"].browse(values["product_id"])
+                values["standard_price"] = product.standard_price
+        return super(StockInventoryLine, self).create(vals_list)
 
     @api.onchange("product_id", "location_id", "product_uom_id", "prod_lot_id", "partner_id", "package_id")
     def _onchange_quantity_context(self):

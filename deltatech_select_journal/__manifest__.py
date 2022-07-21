@@ -4,13 +4,13 @@
 
 {
     "name": "Deltatech Select Journal",
-    "version": "14.0.1.0.0",
+    "version": "14.0.1.0.4",
     "author": "Terrabit, Dorin Hongu",
-    "license": "AGPL-3",
+    "license": "LGPL-3",
     "website": "https://www.terrabit.ro",
     "summary": "Selectie jurnal",
     "category": "Sales",
-    "depends": ["sale"],
+    "depends": ["sale_stock"],
     "data": ["wizard/sale_make_invoice_advance_views.xml"],
     "images": ["images/main_screenshot.png"],
     "development_status": "Mature",

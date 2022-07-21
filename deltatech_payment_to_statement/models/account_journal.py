@@ -12,7 +12,7 @@ class AccountJournal(models.Model):
     statement_sequence_id = fields.Many2one("ir.sequence", string="Statement Sequence", copy=False)
     auto_statement = fields.Boolean("Auto Statement")
 
-    journal_sequence_id = fields.Many2one("ir.sequence", string="Sequence", copy=False)
+    journal_sequence_id = fields.Many2one("ir.sequence", string="Journal Sequence", copy=False)
     cash_in_sequence_id = fields.Many2one("ir.sequence", string="Sequence for cash in")
     cash_out_sequence_id = fields.Many2one("ir.sequence", string="Sequence for cash out")
 
@@ -28,7 +28,8 @@ class AccountJournal(models.Model):
             query = """
             SELECT sum(balance) as balance, sum(amount_currency)  as amount_currency
             FROM account_move_line
-            WHERE account_id = %s AND date <= %s;
+            WHERE
+             parent_state = 'posted' AND account_id = %s AND date <= %s;
             """
             self.env.cr.execute(query, (self.company_id.transfer_account_id.id, fields.Date.today()))
             query_results = self.env.cr.dictfetchall()

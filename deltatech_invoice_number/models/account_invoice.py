@@ -20,21 +20,21 @@ class AccountInvoice(models.Model):
     # todo: numerotarea nu se mai face in functie de secventa din jurnal
     def action_get_number(self):
         for invoice in self:
-            if invoice.name and invoice.name != "/":
-                raise UserError(_("The invoice is already numbered."))
+            # if invoice.name and invoice.name != "/":
+            #     raise UserError(_("The invoice is already numbered."))
             if not invoice.invoice_date:
                 raise UserError(_("The invoice has no date."))
             msg = self.check_data()
             if msg != "":
                 raise UserError(msg)
             journal = invoice.journal_id
-            if journal.sequence_id:
+            if journal.journal_sequence_id:
                 # If invoice is actually refund and journal has a refund_sequence then use that one or use the regular one
-                sequence = journal.sequence_id
-                if invoice and invoice.type in ["out_refund", "in_refund"] and journal.refund_sequence:
-                    if not journal.refund_sequence_id:
-                        raise UserError(_("Please define a sequence for the refunds"))
-                    sequence = journal.refund_sequence_id
+                sequence = journal.journal_sequence_id
+                # if invoice and invoice.move_type in ["out_refund", "in_refund"] and journal.refund_sequence:
+                #     if not journal.refund_sequence_id:
+                #         raise UserError(_("Please define a sequence for the refunds"))
+                #     sequence = journal.refund_sequence_id
 
                 new_name = sequence.with_context(ir_sequence_date=invoice.invoice_date).next_by_id()
             else:
@@ -44,33 +44,39 @@ class AccountInvoice(models.Model):
     def check_data(self, journal_id=None, invoice_date=None):
 
         for obj_inv in self:
-            inv_type = obj_inv.move_type
-
-            invoice_date = invoice_date or obj_inv.invoice_date
             journal_id = journal_id or obj_inv.journal_id.id
-
-            if (inv_type == "out_invoice" or inv_type == "out_refund") and not obj_inv.name:
-                res = self.search(
-                    [
-                        ("type", "=", inv_type),
-                        ("invoice_date", ">", invoice_date),
-                        ("journal_id", "=", journal_id),
-                        ("state", "in", ["open", "paid"]),
-                    ],
-                    limit=1,
-                    order="date_invoice desc",
-                )
-                if res:
-                    invoice_date = res.invoice_date
-                    return _("Post the invoice with a greater date than %s") % invoice_date
+            journal = self.env["account.journal"].browse(journal_id)
+            if journal.restrict_date:
+                inv_type = obj_inv.move_type
+                invoice_date = invoice_date or obj_inv.invoice_date
+                if (inv_type == "out_invoice" or inv_type == "out_refund") and obj_inv.state == "draft":
+                    res = self.search(
+                        [
+                            ("move_type", "=", inv_type),
+                            ("invoice_date", ">", invoice_date),
+                            ("journal_id", "=", journal_id),
+                            ("state", "=", "posted"),
+                        ],
+                        limit=1,
+                        order="invoice_date desc",
+                    )
+                    if res:
+                        invoice_date = res.invoice_date
+                        return _("Post the invoice with a greater date than %s") % invoice_date
         return ""
 
-    def action_move_create(self):
-        msg = self.check_data()
-        if msg != "":
-            raise UserError(msg)
-        super(AccountInvoice, self).action_move_create()
-        return True
+    def action_post(self):
+        message = self.check_data()
+        if message:
+            raise UserError(message)
+        return super(AccountInvoice, self).action_post()
+
+    # def action_move_create(self):
+    #     msg = self.check_data()
+    #     if msg != "":
+    #         raise UserError(msg)
+    #     super(AccountInvoice, self).action_move_create()
+    #     return True
 
     def action_number(self):
         # TODO: not correct fix but required a fresh values before reading it.
@@ -78,36 +84,36 @@ class AccountInvoice(models.Model):
 
         for inv in self:
 
-            if inv.type in ("in_invoice", "in_refund"):
-                if not inv.reference:
+            if inv.move_type in ("in_invoice", "in_refund"):
+                if not inv.ref:
                     ref = inv.name
                 else:
-                    ref = inv.reference
+                    ref = inv.ref
             else:
                 ref = inv.name
 
             self._cr.execute(
                 """ UPDATE account_move SET name  = %s
                                        WHERE id=%s  """,
-                (inv.name, inv.move_id.id),
+                (inv.name, inv.id),
             )
 
             self._cr.execute(
                 """ UPDATE account_move SET ref = %s
                            WHERE id=%s AND (ref IS NULL OR ref = '')""",
-                (ref, inv.move_id.id),
+                (ref, inv.id),
             )
             self._cr.execute(
                 """ UPDATE account_move_line SET ref = %s
                            WHERE move_id=%s AND (ref IS NULL OR ref = '')""",
-                (ref, inv.move_id.id),
+                (ref, inv.id),
             )
             self._cr.execute(
                 """ UPDATE account_analytic_line SET ref = %s
                            FROM account_move_line
                            WHERE account_move_line.move_id = %s AND
                                  account_analytic_line.move_id = account_move_line.id""",
-                (ref, inv.move_id.id),
+                (ref, inv.id),
             )
             self.invalidate_cache()
 

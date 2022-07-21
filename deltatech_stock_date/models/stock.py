@@ -3,7 +3,13 @@
 # See README.rst file on addons root folder for license details
 
 
-from odoo import api, fields, models
+from datetime import date, timedelta
+
+from dateutil.relativedelta import relativedelta
+
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
+from odoo.tools.safe_eval import safe_eval
 
 
 class StockQuant(models.Model):
@@ -42,6 +48,27 @@ class StockMove(models.Model):
 
         return super(StockMove, self).write(vals)
 
+    def _action_done(self, cancel_backorder=False):
+        get_param = self.env["ir.config_parameter"].sudo().get_param
+        restrict_date = safe_eval(get_param("restrict_stock_move_date_last_months", "False"))
+        if restrict_date:
+            last_day_of_prev_month = date.today().replace(day=1) - timedelta(days=1)
+            start_day_of_prev_month = date.today().replace(day=1) - timedelta(days=last_day_of_prev_month.day)
+            end_day_of_current_month = date.today().replace(day=1) + relativedelta(months=1) - relativedelta(days=1)
+            use_date = self.env.context.get("force_period_date", False)
+            if use_date:
+                if start_day_of_prev_month <= use_date.date() <= end_day_of_current_month:
+                    pass
+                else:
+                    raise UserError(_("Cannot validate stock move due to date restriction."))
+            else:
+                for move in self:
+                    if start_day_of_prev_month <= move.date.date() <= end_day_of_current_month:
+                        pass
+                    else:
+                        raise UserError(_("Cannot validate stock move due to date restriction."))
+        return super(StockMove, self)._action_done(cancel_backorder)
+
 
 class StockPicking(models.Model):
     _inherit = "stock.picking"
@@ -50,8 +77,10 @@ class StockPicking(models.Model):
         # se suprascrie metoda standard petnru a nu mai permite editarea
         return False
 
-    def button_validate(self):
-        return super(StockPicking, self.with_context(force_period_date=self.scheduled_date)).button_validate()
+    # def button_validate(self):
+    #     if len(self) == 1:
+    #         return super(StockPicking, self.with_context(force_period_date=self.scheduled_date)).button_validate()
+    #     return super(StockPicking, self).button_validate()
 
     def _action_done(self):
         super(StockPicking, self)._action_done()
