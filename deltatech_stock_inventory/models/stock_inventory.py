@@ -17,9 +17,9 @@ class Inventory(models.Model):
 
     name = fields.Char(
         "Inventory Reference",
-        default="Inventory",
         readonly=True,
         required=True,
+        default=lambda self: _("New"),
         states={"draft": [("readonly", False)]},
     )
     date = fields.Datetime(
@@ -108,7 +108,11 @@ class Inventory(models.Model):
 
     def unlink(self):
         for inventory in self:
-            if inventory.state not in ("draft", "cancel") and not self.env.context.get(MODULE_UNINSTALL_FLAG, False):
+            if (
+                inventory.state not in ("draft", "cancel")
+                and not self.env.context.get(MODULE_UNINSTALL_FLAG, False)
+                and not self.env.context.get("merge_inventory", False)
+            ):
                 raise UserError(
                     _(
                         "You can only delete a draft inventory adjustment. "
@@ -121,8 +125,6 @@ class Inventory(models.Model):
         if not self.exists():
             return
         self.ensure_one()
-        if not self.user_has_groups("stock.group_stock_manager"):
-            raise UserError(_("Only a stock manager can validate an inventory adjustment."))
         if self.state != "confirm":
             raise UserError(
                 _(
@@ -156,9 +158,11 @@ class Inventory(models.Model):
                 "target": "new",
                 "res_id": wiz.id,
             }
+        quants = self.line_ids.get_quants()
         self._action_done()
         self.line_ids._check_company()
         self._check_company()
+        quants.write({"inventory_quantity_set": False, "last_inventory_date": self.date})
         return True
 
     def _action_done(self):
@@ -259,6 +263,8 @@ class Inventory(models.Model):
             "default_inventory_id": self.id,
             "default_company_id": self.company_id.id,
         }
+        if self.state == "done":
+            context["default_is_editable"] = False
         # Define domains and context
         domain = [("inventory_id", "=", self.id), ("location_id.usage", "in", ["internal", "transit"])]
         if self.location_ids:
@@ -707,26 +713,28 @@ class InventoryLine(models.Model):
         return self.env["stock.move"].create(vals_list)
 
     def get_quants(self, create=False):
-        self.ensure_one()
-        quants = self.env["stock.quant"]._gather(
-            self.product_id,
-            self.location_id,
-            lot_id=self.prod_lot_id,
-            package_id=self.package_id,
-            owner_id=self.partner_id,
-            strict=True,
-        )
-        if not quants and create:
-            quants = self.env["stock.quant"].create(
-                {
-                    "product_id": self.product_id.id,
-                    "lot_id": self.prod_lot_id.id,
-                    "owner_id": self.partner_id.id,
-                    "location_id": self.location_id.id,
-                    "package_id": self.package_id.id,
-                }
+        all_quants = self.env["stock.quant"]
+        for line in self:
+            quants = self.env["stock.quant"]._gather(
+                line.product_id,
+                line.location_id,
+                lot_id=line.prod_lot_id,
+                package_id=line.package_id,
+                owner_id=line.partner_id,
+                strict=True,
             )
-        return quants
+            if not quants and create:
+                quants = self.env["stock.quant"].create(
+                    {
+                        "product_id": line.product_id.id,
+                        "lot_id": line.prod_lot_id.id,
+                        "owner_id": line.partner_id.id,
+                        "location_id": line.location_id.id,
+                        "package_id": line.package_id.id,
+                    }
+                )
+            all_quants |= quants
+        return all_quants
 
     def action_refresh_quantity(self):
         filtered_lines = self.filtered(lambda l: l.state != "done")
