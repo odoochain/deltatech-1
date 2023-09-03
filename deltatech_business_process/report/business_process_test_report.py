@@ -33,10 +33,6 @@ class BusinessProcessTestReport(models.Model):
         readonly=True,
     )
 
-    date_start_bbp = fields.Date(string="Start BBP", help="Start date business blueprint", readonly=True)
-    date_end_bbp = fields.Date(string="End BBP", help="End date business blueprint", readonly=True)
-    completion_bbp = fields.Float(string="Completion", help="Completion business blueprint", readonly=True)
-
     transaction_id = fields.Many2one(string="Transaction", comodel_name="business.transaction", readonly=True)
     transaction_type = fields.Selection(
         [("md", "Master Data"), ("tr", "Transaction"), ("rp", "Report"), ("ex", "Extern")],
@@ -66,6 +62,7 @@ class BusinessProcessTestReport(models.Model):
         default="other",
         readonly=True,
     )
+    completion_test = fields.Float(help="Completion test", group_operator="avg", readonly=True, digits=(16, 2))
 
     result = fields.Selection(
         [
@@ -76,11 +73,14 @@ class BusinessProcessTestReport(models.Model):
         string="Result",
         readonly=True,
     )
+
     data_used = fields.Text(string="Data used", readonly=True)
     data_result = fields.Text(string="Data result", readonly=True)
 
     date_start = fields.Date(string="Date start test", readonly=True)
     date_end = fields.Date(string="Date end test", readonly=True)
+
+    count_issues = fields.Integer(string="Issues", readonly=True)
 
     @property
     def _table_query(self):
@@ -112,11 +112,14 @@ class BusinessProcessTestReport(models.Model):
 
                 bpt.state AS state_test,
                 bpt.scope AS scope,
+                bpt.completion_test AS completion_test,
                 bpst.result AS result,
+
                 bpst.data_used AS data_used,
                 bpst.data_result AS data_result,
                 bpst.date_start AS date_start,
-                bpst.date_end AS date_end
+                bpst.date_end AS date_end,
+                bpst.count_issues AS count_issues
 
 
         """

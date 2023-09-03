@@ -9,17 +9,26 @@ class BusinessProcessTest(models.Model):
     _description = "Business process Test"
     _inherit = ["mail.thread", "mail.activity.mixin"]
 
-    name = fields.Char(string="Name", required=True)
-    process_id = fields.Many2one(string="Process", comodel_name="business.process", required=True)
+    name = fields.Char(string="Name", required=True, readonly=False, states={"done": [("readonly", True)]})
+    process_id = fields.Many2one(
+        string="Process", comodel_name="business.process", required=True, states={"done": [("readonly", True)]}
+    )
     area_id = fields.Many2one(string="Area", comodel_name="business.area", related="process_id.area_id", store=True)
-    tester_id = fields.Many2one(string="Tester", comodel_name="res.partner", domain="[('is_company', '=', False)]")
-    date_start = fields.Date(string="Date start")
-    date_end = fields.Date(string="Date end")
+    tester_id = fields.Many2one(
+        string="Tester",
+        comodel_name="res.partner",
+        domain="[('is_company', '=', False)]",
+        states={"done": [("readonly", True)]},
+    )
+    date_start = fields.Date(string="Date start", states={"done": [("readonly", True)]})
+    date_end = fields.Date(string="Date end", states={"done": [("readonly", True)]})
     state = fields.Selection(
         [("draft", "Draft"), ("run", "Run"), ("wait", "Waiting"), ("done", "Done")],
         string="State",
         tracking=True,
         default="draft",
+        copy=False,
+        index=True,
     )
     scope = fields.Selection(
         [
@@ -34,11 +43,26 @@ class BusinessProcessTest(models.Model):
         default="other",
     )
     count_steps = fields.Integer(string="Steps", compute="_compute_count_steps")
+    completion_test = fields.Float(
+        help="Completion test", group_operator="avg", compute="_compute_completion_test", store=True, digits=(16, 2)
+    )
     doc_count = fields.Integer(string="Number of documents attached", compute="_compute_attached_docs_count")
 
     test_step_ids = fields.One2many(
-        string="Test steps", comodel_name="business.process.step.test", inverse_name="process_test_id"
+        string="Test steps",
+        comodel_name="business.process.step.test",
+        inverse_name="process_test_id",
+        copy=True,
     )
+
+    @api.depends("test_step_ids.result")
+    def _compute_completion_test(self):
+        for test in self:
+            if test.test_step_ids:
+                completion_test_steps = test.test_step_ids.filtered(lambda x: x.result == "passed")
+                test.completion_test = round(len(completion_test_steps) / len(test.test_step_ids) * 100, 2)
+            else:
+                test.completion_test = 0.0
 
     def _compute_count_steps(self):
         for test in self:
@@ -95,7 +119,7 @@ class BusinessProcessTest(models.Model):
     def action_run(self):
         self.ensure_one()
         self.write({"state": "run"})
-
+        self._add_followers()
         for test in self:
             date_start = min(test.test_step_ids.mapped("date_start")) or fields.Date.today()
             date_start = min(date_start, test.date_start or fields.Date.today())
@@ -135,3 +159,13 @@ class BusinessProcessTest(models.Model):
     def action_draft(self):
         self.ensure_one()
         self.write({"state": "draft"})
+
+    def _add_followers(self):
+        for process in self:
+            followers = self.env["res.partner"]
+            if process.tester_id not in process.message_partner_ids:
+                followers |= process.tester_id
+            for step in process.test_step_ids:
+                if step.responsible_id not in process.message_partner_ids:
+                    followers |= step.responsible_id
+            process.message_subscribe(followers.ids)

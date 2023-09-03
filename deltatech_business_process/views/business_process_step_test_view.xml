@@ -33,6 +33,7 @@
                     decoration-success="result == 'ok'"
                     optional="hide"
                 />
+
                 <field name="feedback_text" optional="hide" />
 
             </tree>
@@ -61,6 +62,7 @@
                                 decoration-danger="result == 'failed'"
                                 decoration-success="result == 'passed'"
                             />
+
                         </group>
                         <group string="Responsible">
                             <field name="responsible_id" />
