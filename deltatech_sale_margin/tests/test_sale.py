@@ -9,7 +9,7 @@ from odoo.tests.common import TransactionCase
 
 class TestSale(TransactionCase):
     def setUp(self):
-        super(TestSale, self).setUp()
+        super().setUp()
         self.partner_a = self.env["res.partner"].create({"name": "Test"})
 
         seller_ids = [(0, 0, {"partner_id": self.partner_a.id})]
@@ -22,28 +22,6 @@ class TestSale(TransactionCase):
         self.stock_location = self.env.ref("stock.stock_location_stock")
         self.env["stock.quant"]._update_available_quantity(self.product_a, self.stock_location, 1000)
         self.env["stock.quant"]._update_available_quantity(self.product_b, self.stock_location, 1000)
-
-        # inv_line_a = {
-        #     "product_id": self.product_a.id,
-        #     "product_qty": 10000,
-        #     "location_id": self.stock_location.id,
-        # }
-        # inv_line_b = {
-        #     "product_id": self.product_b.id,
-        #     "product_qty": 10000,
-        #     "location_id": self.stock_location.id,
-        # }
-        # inventory = self.env["stock.inventory"].create(
-        #     {
-        #         "name": "Inv. productserial1",
-        #         "line_ids": [
-        #             (0, 0, inv_line_a),
-        #             (0, 0, inv_line_b),
-        #         ],
-        #     }
-        # )
-        # inventory.action_start()
-        # inventory.action_validate()
 
     def test_sale(self):
         so = Form(self.env["sale.order"])
@@ -62,9 +40,9 @@ class TestSale(TransactionCase):
 
         self.picking = self.so.picking_ids
         self.picking.action_assign()
-        for move_line in self.picking.move_line_ids:
-            if move_line.product_uom_qty > 0 and move_line.quantity_done == 0:
-                move_line.write({"quantity_done": move_line.product_uom_qty})
+        for move in self.picking.move_ids:
+            if move.product_uom_qty > 0 and move.quantity_done == 0:
+                move.write({"quantity_done": move.product_uom_qty})
         self.picking._action_done()
         invoice = self.so._create_invoices()
         invoice = Form(invoice)

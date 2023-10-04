@@ -32,7 +32,6 @@ class WebsiteSaleAlternativeLink(WebsiteSale):
         return str(res)
 
     def _search_products_by_code(self, search, vat=""):
-
         domain = request.website.sale_product_domain()
         _logger.info("_search_products_by_code: %s", search)
         if search:
@@ -66,14 +65,13 @@ class WebsiteSaleAlternativeLink(WebsiteSale):
             for product in products:
                 ok = True
                 for supplier in product.seller_ids:
-                    if supplier.name.vat == vat:
+                    if supplier.partner_id.vat == vat:
                         ok = False
                 if ok:
                     filtred_products |= product
 
         for product in filtred_products:
             if product.is_published:
-
                 combination_info = product.with_context(display_default_code=False)._get_combination_info(
                     pricelist=pricelist
                 )

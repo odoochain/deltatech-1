@@ -9,6 +9,7 @@ class StockPicking(models.Model):
     _inherit = "stock.picking"
 
     notification_id = fields.Many2one("service.notification", string="Notification", readonly=True)
+    service_order_id = fields.Many2one("service.order", string="Service Order", readonly=True)
 
     @api.model
     @api.returns("self", lambda value: value.id)
@@ -16,7 +17,7 @@ class StockPicking(models.Model):
         notification_id = self.env.context.get("notification_id", False)
         if notification_id:
             vals["notification_id"] = notification_id
-        picking = super(StockPicking, self).create(vals)
+        picking = super().create(vals)
 
         if notification_id:
             notification = self.env["service.notification"].browse(notification_id)
@@ -27,11 +28,10 @@ class StockPicking(models.Model):
         self.ensure_one()
         context = {"default_partner_id": self.partner_id.id}
 
-        if self.move_ids:
-
+        if self.move_lines:
             context["default_item_ids"] = []
 
-            for item in self.move_ids:
+            for item in self.move_lines:
                 value = {}
                 value["product_id"] = item.product_id.id
                 value["quantity"] = item.product_uom_qty

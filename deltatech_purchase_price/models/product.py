@@ -77,10 +77,8 @@ class SupplierInfo(models.Model):
         for item in self:
             from_uom = item.product_uom or item.product_tmpl_id.uom_id
             to_uom = item.product_tmpl_id.uom_id
-            if from_uom and to_uom:
-                price = from_uom._compute_price(item.price, to_uom)
-            else:
-                price = item.price
+            price = from_uom._compute_price(item.price, to_uom)
+
             if item.currency_id:
                 to_currency = self.env.user.company_id.currency_id
                 company = self.env.user.company_id
@@ -90,12 +88,12 @@ class SupplierInfo(models.Model):
                 item.product_tmpl_id.onchange_last_purchase_price()
 
     def write(self, vals):
-        res = super(SupplierInfo, self).write(vals)
+        res = super().write(vals)
         if "price" in vals:
             self.update_last_purchase_price()
         return res
 
     def create(self, vals_list):
-        res = super(SupplierInfo, self).create(vals_list)
+        res = super().create(vals_list)
         res.update_last_purchase_price()
         return res

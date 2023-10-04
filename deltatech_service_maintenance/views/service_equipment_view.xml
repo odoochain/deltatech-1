@@ -13,6 +13,11 @@
                     <span class="o_stat_text">Orders</span>
                 </button>
             </div>
+
+            <group name="technician" position="inside">
+                <field name="work_center_id" />
+            </group>
+
         </field>
     </record>
 </odoo>

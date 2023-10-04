@@ -3,11 +3,13 @@
 # See README.rst file on addons root folder for license details
 
 
-from odoo import _, models
+from odoo import _, fields, models
 
 
 class ServiceEquipment(models.Model):
     _inherit = "service.equipment"
+
+    work_center_id = fields.Many2one("service.work.center", string="Work Center")
 
     def get_context_default(self):
         context = {

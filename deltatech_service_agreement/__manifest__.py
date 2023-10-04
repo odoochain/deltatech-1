@@ -14,8 +14,9 @@
         "account",
         # "date_range",
         "deltatech_service_base",
+        # "deltatech_agreement_management",
     ],
-    "license": "AGPL-3",
+    "license": "OPL-1",
     "data": [
         "security/service_security.xml",
         "security/ir.model.access.csv",

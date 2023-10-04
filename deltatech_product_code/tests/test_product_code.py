@@ -7,7 +7,10 @@ from odoo.tests.common import TransactionCase
 
 class TestProductCode(TransactionCase):
     def setUp(self):
-        super(TestProductCode, self).setUp()
+        super().setUp()
+
+        self.partner_a = self.env["res.partner"].create({"name": "Test"})
+
         # pregatire categorie noua pentru test in care se sa fie definita secventa de coduri
 
         # creare secventa de coduri
@@ -26,11 +29,11 @@ class TestProductCode(TransactionCase):
             {
                 "name": "Test",
                 "sequence_id": sequence.id,
+                "generate_barcode": True,
             }
         )
 
     def test_new_product_template(self):
-
         # creare produs nou
         product_template = self.env["product.template"].create(
             {
@@ -42,7 +45,6 @@ class TestProductCode(TransactionCase):
         self.assertEqual(product_template.default_code, "TEST/0001")
 
     def test_new_product_product(self):
-
         # creare produs nou
         product_product = self.env["product.product"].create(
             {

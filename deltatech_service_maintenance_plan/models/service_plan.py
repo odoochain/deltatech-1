@@ -14,13 +14,16 @@ class ServicePlan(models.Model):
     _description = "Service Plan"
 
     name = fields.Char(string="Reference", readonly=True, default="/")
-    equipment_id = fields.Many2one(
-        "service.equipment",
-        string="Equipment",
+    service_location_id = fields.Many2one(
+        "service.location",
+        string="Functional Location",
         index=True,
-        required=True,
         readonly=True,
         states={"draft": [("readonly", False)]},
+    )
+
+    equipment_id = fields.Many2one(
+        "service.equipment", string="Equipment", index=True, readonly=True, states={"draft": [("readonly", False)]}
     )
     cycle_id = fields.Many2one(
         "service.cycle", string="Cycle", required=True, readonly=True, states={"draft": [("readonly", False)]}
@@ -71,6 +74,10 @@ class ServicePlan(models.Model):
         "service.order.type", string="Order Type", readonly=True, states={"draft": [("readonly", False)]}
     )
 
+    work_center_id = fields.Many2one(
+        "service.work.center", string="Work Center", readonly=True, states={"draft": [("readonly", False)]}
+    )
+
     call_ids = fields.One2many("service.plan.call", "plan_id", string="Plan Calls", readonly=True)
 
     last_call_done_date = fields.Date(
@@ -95,7 +102,7 @@ class ServicePlan(models.Model):
             sequence_plan = self.env.ref("deltatech_service_maintenance_plan.sequence_plan")
             if sequence_plan:
                 vals["name"] = sequence_plan.next_by_id()
-        return super(ServicePlan, self).create(vals)
+        return super().create(vals)
 
     def action_start(self):
         self.write({"state": "active"})
@@ -112,8 +119,8 @@ class ServicePlan(models.Model):
         return True
 
     def action_restart(self):
-        self.rescheduling()
         self.write({"state": "active"})
+        self.rescheduling()
         return True
 
     def action_rescheduling(self):
@@ -273,10 +280,12 @@ class ServicePlanCall(models.Model):
         order = self.env["service.order"].create(
             {
                 "date": self.plan_date,
+                "service_location_id": self.plan_id.service_location_id.id,
                 "equipment_id": self.plan_id.equipment_id.id,
                 "reason_id": self.plan_id.reason_id.id,
                 "plan_call_id": self.id,
                 "type_id": self.plan_id.order_type_id.id,
+                "work_center_id": self.plan_id.work_center_id.id,
             }
         )
         self.write({"state": "called", "order_id": order.id})

@@ -10,7 +10,6 @@ class AccountInvoice(models.Model):
     _inherit = "account.move"
 
     def invoice_print_delivery(self):
-
         # result = self.env.ref("stock.action_picking_tree_all")[0]
 
         # compute the number of delivery orders to display
@@ -30,7 +29,7 @@ class AccountInvoice(models.Model):
         if not pickings:
             raise UserError(_("This invoice has no deliveries"))
 
-        action = self.env.ref("stock.action_picking_tree_all").read()[0]
+        action = self.env["ir.actions.actions"]._for_xml_id("stock.action_picking_tree_all")
 
         if len(pickings) > 1:
             action["domain"] = [("id", "in", pickings.ids)]

@@ -18,7 +18,7 @@ class StockQuant(models.Model):
 
     @api.model
     def _get_inventory_fields_write(self):
-        fields = super(StockQuant, self)._get_inventory_fields_write()
+        fields = super()._get_inventory_fields_write()
         fields += ["last_inventory_date", "inventory_note"]
         return fields
 
@@ -60,9 +60,11 @@ class StockQuant(models.Model):
     def action_set_inventory_quantity_to_zero(self):
         self.inventory_id = False
         self.inventory_line_id = False
-        super(StockQuant, self).action_set_inventory_quantity_to_zero()
+        super().action_set_inventory_quantity_to_zero()
 
     def action_apply_inventory(self):
+        if not self.env.user.has_group("deltatech_stock_inventory.group_view_inventory_button"):
+            raise UserError(_("Your user cannot update product quantities"))
         for quant in self:
             quant.last_inventory_date = fields.Date.today()
 
@@ -85,7 +87,11 @@ class StockQuant(models.Model):
         self.write({"inventory_id": False, "inventory_line_id": False})
 
     def write(self, vals):
-        res = super(StockQuant, self).write(vals)
+        if "inventory_quantity" in vals and not self.env.user.has_group(
+            "deltatech_stock_inventory.group_view_inventory_button"
+        ):
+            raise UserError(_("Your user cannot update product quantities"))
+        res = super().write(vals)
         if "inventory_quantity" in vals and not self.env.context.get("apply_inventory", False):
             for quant in self:
                 inventor_line = quant.inventory_line_id
@@ -95,8 +101,17 @@ class StockQuant(models.Model):
                 #     quant.create_inventory_lines()
         return res
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        for values in vals_list:
+            if "inventory_quantity" in values and not self.env.user.has_group(
+                "deltatech_stock_inventory.group_view_inventory_button"
+            ):
+                raise UserError(_("Your user cannot update product quantities"))
+        return super().create(vals_list)
+
     def _get_inventory_move_values(self, qty, location_id, location_dest_id, out=False):
-        values = super(StockQuant, self)._get_inventory_move_values(qty, location_id, location_dest_id, out)
+        values = super()._get_inventory_move_values(qty, location_id, location_dest_id, out)
         values["inventory_id"] = self.inventory_id.id
         values["name"] = self.inventory_note or values["name"]
         return values

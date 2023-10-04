@@ -4,14 +4,14 @@
 
 
 {
-    "name": "Price Categ ",
-    "summary": "Price List: Bronze Silver and Gold ",
-    "version": "16.0.1.0.0",
+    "name": "Price Category ",
+    "summary": "Price List: Bronze Silver and Gold in product",
+    "version": "16.0.1.0.1",
     "author": "Terrabit, Dorin Hongu",
     "website": "https://www.terrabit.ro",
     "category": "Generic Modules/Stock",
-    "depends": ["product", "account", "sale"],
-    "license": "AGPL-3",
+    "depends": ["product", "account", "sale", "deltatech_purchase_price"],
+    "license": "OPL-1",
     "data": ["views/product_view.xml"],
     "images": ["images/main_screenshot.png"],
     "development_status": "Production/Stable",

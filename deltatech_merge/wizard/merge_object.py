@@ -24,7 +24,6 @@ class MergeDummy(models.TransientModel):
 
 
 class MergeObjectLine(models.TransientModel):
-
     _name = "merge.object.line"
     _description = "Merge Object Line"
     _order = "min_id asc"
@@ -66,7 +65,7 @@ class MergeObject(models.TransientModel):
 
     @api.model
     def default_get(self, fields_list):
-        res = super(MergeObject, self).default_get(fields_list)
+        res = super().default_get(fields_list)
         active_ids = self.env.context.get("active_ids")
         if self.env.context.get("active_model") == self._model_merge and active_ids:
             res["state"] = "selection"
@@ -116,7 +115,7 @@ class MergeObject(models.TransientModel):
         Object = self.env[self._model_merge]
         relations = self._get_fk_on(self._table_merge)
 
-        self.flush()
+        self.env.flush_all()
 
         for table, column in relations:
             if "merge_object_" in table:  # ignore two tables
@@ -192,7 +191,7 @@ class MergeObject(models.TransientModel):
                     query = 'DELETE FROM "%(table)s" WHERE "%(column)s" IN %%s' % query_dic
                     self._cr.execute(query, (tuple(src_objects.ids),))
 
-        self.invalidate_cache()
+        self.invalidate_recordset()
 
     @api.model
     def _update_reference_fields(self, src_objects, dst_object):
@@ -210,7 +209,7 @@ class MergeObject(models.TransientModel):
             try:
                 with mute_logger("odoo.sql_db"), self.env.clear_upon_failure():
                     records.sudo().write({field_id: dst_object.id})
-                    records.flush()
+                    self.env.flush_all()
             except psycopg2.Error:
                 # updating fails, most likely due to a violated unique constraint
                 # keeping record with nonexistent object_id is useless, better delete it
@@ -248,7 +247,7 @@ class MergeObject(models.TransientModel):
                 }
                 records_ref.sudo().write(values)
 
-        self.flush()
+        self.env.flush_all()
 
     def _get_summable_fields(self):
         """Returns the list of fields that should be summed when merging objects"""
@@ -460,7 +459,7 @@ class MergeObject(models.TransientModel):
         next wizard line. Each line is a subset of object that can be merged together.
         If no line left, the end screen will be displayed (but an action is still returned).
         """
-        self.invalidate_cache()  # FIXME: is this still necessary?
+        self.invalidate_recordset()  # FIXME: is this still necessary?
         values = {}
         if self.line_ids:
             # in this case, we try to find the next record.

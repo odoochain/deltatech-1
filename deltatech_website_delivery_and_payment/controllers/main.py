@@ -27,11 +27,10 @@ class WebsiteSale(Base):
                 result = {"status": True, "all_acquirer": True}
 
         if acquirer_id:
-
-            context = dict(request.context)
-            context.setdefault("acquirer_id", acquirer_id)
-            request.context = context
-
+            # context = dict(request.context)
+            # context.setdefault("acquirer_id", acquirer_id)
+            # request.context = context
+            request.update_context(acquirer_id=acquirer_id)
             order = request.website.sale_get_order()
 
             acquirer = request.env["payment.provider"].sudo().browse(int(acquirer_id))
@@ -51,11 +50,12 @@ class WebsiteSale(Base):
         # order = request.website.sale_get_order()
         acquirer_id = int(kw.get("acquirer_id", 0))
         if acquirer_id:
-            context = dict(request.context)
-            context.setdefault("acquirer_id", acquirer_id)
-            request.context = context
+            # context = dict(request.context)
+            # context.setdefault("acquirer_id", acquirer_id)
+            # request.context = context
+            request.update_context(acquirer_id=acquirer_id)
         # if acquirer_id:
-        #     acquirer = request.env["payment.acquirer"].sudo().browse(int(acquirer_id))
+        #     acquirer = request.env["payment.provider"].sudo().browse(int(acquirer_id))
         #     if acquirer and order.acquirer_id != acquirer:
         #         order.write({"acquirer_id": acquirer.id})
 
