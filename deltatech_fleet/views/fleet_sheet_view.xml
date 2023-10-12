@@ -53,6 +53,7 @@
                                     states="draft"
                                     icon="fa-calculator"
                                 />
+                                <button string="Cancel" class="oe_link" special="cancel" />
                                 <field name="odometer_start" class="oe_inline" />
                             </div>
 

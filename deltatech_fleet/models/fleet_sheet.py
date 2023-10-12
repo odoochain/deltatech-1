@@ -454,7 +454,7 @@ class FleetRouteLog(models.Model):
     date_end = fields.Datetime(
         string="Date End", states={"done": [("readonly", True)]}, default=_get_default_date_begin
     )
-    week_day = fields.Integer(compute="_compute_week_day", string="Name", store=False)
+    week_day = fields.Integer(compute="_compute_week_day", string="Week Name", store=False)
     route_id = fields.Many2one("fleet.route", string="Route", states={"done": [("readonly", True)]})
     vehicle_id = fields.Many2one(
         "fleet.vehicle",

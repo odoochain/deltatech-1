@@ -61,7 +61,7 @@ class MrpBomLine(models.Model):
                 "res_model": "mrp.bom",
                 "view_id": False,
                 "target": "current",
-                "nodestroy": True,
+                "context": {"nodestroy": True},
                 "type": "ir.actions.act_window",
             }
 

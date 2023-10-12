@@ -24,7 +24,7 @@ class FleetVehicleLogFuel(models.Model):
     liter = fields.Float()
     price_per_liter = fields.Float()
 
-    log_service_id = fields.Many2one("fleet.vehicle.log.services", ondelete="cascade")
+    log_service_id = fields.Many2one("fleet.vehicle.log.services", string="Related Service", required=True, ondelete="cascade")
 
     # comune cu: fleet.vehicle.log.services
     # amount = fields.Float(string="Amount", store=True, readonly=False)
