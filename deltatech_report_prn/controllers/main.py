@@ -4,8 +4,7 @@
 
 import json
 import time
-
-from werkzeug.urls import url_decode
+from urllib.parse import parse_qs
 
 from odoo.http import content_disposition, request, route
 from odoo.tools.safe_eval import safe_eval
@@ -48,7 +47,7 @@ class ReportController(report.ReportController):
                 response = self.report_routes(reportname, docids=docids, converter=converter, context=context)
             else:
                 # Particular report:
-                data = dict(url_decode(url.split("?")[1]).items())  # decoding the args represented in JSON
+                data = dict(parse_qs(url.split("?")[1]).items())  # decoding the args represented in JSON
                 if "context" in data:
                     context, data_context = json.loads(context or "{}"), json.loads(data.pop("context"))
                     context = json.dumps({**context, **data_context})

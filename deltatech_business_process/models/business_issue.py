@@ -131,11 +131,11 @@ class BusinessIssue(models.Model):
         string="Closed by", comodel_name="res.partner", readonly=True, states={"in_test": [("readonly", False)]}
     )
 
-    @api.model
+    @api.model_create_multi
     def create(self, vals):
         if not vals.get("code", False):
             vals["code"] = self.env["ir.sequence"].next_by_code(self._name)
-        result = super().create(vals)
+        result = super(BusinessIssue).create(vals)
         return result
 
     def name_get(self):
